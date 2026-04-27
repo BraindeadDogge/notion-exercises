@@ -95,7 +95,7 @@
       color: #1a1a1a;
       padding: 4px 8px;
       outline: none;
-      width: 180px;
+      min-width: 180px; max-width: 100%;
       text-align: center;
       transition: border-color 0.15s;
     }
@@ -303,7 +303,7 @@
       fb.className = 'feedback wrong';
     }
     if (!noRetry) document.getElementById(`retry-${idx}`)?.classList.add('show');
-    saveResult(idx, choice, isCorrect);
+    saveResult(idx, choice.trim(), isCorrect);
   }
 
   function reset(idx) {
@@ -313,6 +313,7 @@
       input.value    = '';
       input.disabled = false;
       document.getElementById(`check-btn-${idx}`).disabled = false;
+      input.focus();
     } else {
       document.querySelectorAll(`#slot-${idx} .opt`).forEach(b => { b.disabled = false; b.className = 'opt'; });
     }
