@@ -140,6 +140,24 @@
     }
     .remove-slot-btn:hover { color: #e05c52; }
 
+    .mode-toggle {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 1.25rem;
+    }
+    .mode-btn {
+      font-size: 12px;
+      font-family: inherit;
+      padding: 5px 14px;
+      border: 1px solid #e0deda;
+      border-radius: 20px;
+      background: #fff;
+      color: #888;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .mode-btn.active { background: #1a1a1a; border-color: #1a1a1a; color: #fff; }
+
     .add-option-btn {
       font-size: 13px;
       color: #888;
@@ -299,7 +317,7 @@
   function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
   let wordSlots = [
-    { id: 1, prefix: '', suffix: '', context: '',
+    { id: 1, prefix: '', suffix: '', context: '', type: 'options', textAnswer: '',
       options: [{ id: 1, value: 'l', isAnswer: false }, { id: 2, value: 'll', isAnswer: true }],
       nextOptId: 3 }
   ];
@@ -313,13 +331,32 @@
 
   function renderSlot(slot, si) {
     const canRemove = wordSlots.length > 1;
-    const answerVal = slot.options.find(o => o.isAnswer)?.value?.trim() ?? '';
+    const answerVal = slot.type === 'text'
+      ? (slot.textAnswer ?? '').trim()
+      : slot.options.find(o => o.isAnswer)?.value?.trim() ?? '';
     const fullWord  = slot.prefix + answerVal + slot.suffix;
+
+    const answerSection = slot.type === 'text' ? `
+      <div class="section-label" style="margin-top:1.25rem">Correct answer</div>
+      <div class="field" style="margin-bottom:0">
+        <input type="text" value="${esc(slot.textAnswer)}" placeholder="correct answer"
+          oninput="updateTextAnswer(${slot.id}, this.value)">
+      </div>` : `
+      <div class="section-label" style="margin-top:1.25rem">Options</div>
+      <div class="options-list" id="options-list-${slot.id}">
+        ${slot.options.map(opt => renderOption(slot.id, opt)).join('')}
+      </div>
+      <button class="add-option-btn" onclick="addOption(${slot.id})">+ Add option</button>`;
 
     return `<div class="card" id="slot-card-${slot.id}">
       <div class="slot-header">
         <div class="section-label" style="margin:0">Word ${si + 1}</div>
         ${canRemove ? `<button class="remove-slot-btn" onclick="removeSlot(${slot.id})" title="Remove word">&times;</button>` : ''}
+      </div>
+
+      <div class="mode-toggle">
+        <button class="mode-btn ${slot.type === 'options' ? 'active' : ''}" onclick="setSlotType(${slot.id},'options')">Options</button>
+        <button class="mode-btn ${slot.type === 'text' ? 'active' : ''}" onclick="setSlotType(${slot.id},'text')">Type-in</button>
       </div>
 
       <div class="field">
@@ -339,11 +376,7 @@
       </div>
       <p class="preview">Preview: <span>${esc(fullWord) || '—'}</span></p>
 
-      <div class="section-label" style="margin-top:1.25rem">Options</div>
-      <div class="options-list" id="options-list-${slot.id}">
-        ${slot.options.map(opt => renderOption(slot.id, opt)).join('')}
-      </div>
-      <button class="add-option-btn" onclick="addOption(${slot.id})">+ Add option</button>
+      ${answerSection}
     </div>`;
   }
 
@@ -360,7 +393,7 @@
 
   function addSlot() {
     wordSlots.push({
-      id: nextSlotId++, prefix: '', suffix: '', context: '',
+      id: nextSlotId++, prefix: '', suffix: '', context: '', type: 'options', textAnswer: '',
       options: [{ id: 1, value: '', isAnswer: false }, { id: 2, value: '', isAnswer: true }],
       nextOptId: 3
     });
@@ -379,7 +412,9 @@
     const slot = wordSlots.find(s => s.id === slotId);
     if (!slot) return;
     slot[field] = value;
-    const answerVal = slot.options.find(o => o.isAnswer)?.value?.trim() ?? '';
+    const answerVal = slot.type === 'text'
+      ? (slot.textAnswer ?? '').trim()
+      : slot.options.find(o => o.isAnswer)?.value?.trim() ?? '';
     const bb = document.getElementById(`blank-box-${slotId}`);
     if (bb) { bb.textContent = answerVal || '_'; bb.className = 'blank-box' + (answerVal ? ' has-answer' : ''); }
     generate();
@@ -388,6 +423,21 @@
   function updateContext(slotId, value) {
     const slot = wordSlots.find(s => s.id === slotId);
     if (slot) { slot.context = value; generate(); }
+  }
+
+  function setSlotType(slotId, type) {
+    const slot = wordSlots.find(s => s.id === slotId);
+    if (slot) { slot.type = type; renderAllSlots(); }
+  }
+
+  function updateTextAnswer(slotId, value) {
+    const slot = wordSlots.find(s => s.id === slotId);
+    if (!slot) return;
+    slot.textAnswer = value;
+    const answerVal = value.trim();
+    const bb = document.getElementById(`blank-box-${slotId}`);
+    if (bb) { bb.textContent = answerVal || '_'; bb.className = 'blank-box' + (answerVal ? ' has-answer' : ''); }
+    generate();
   }
 
   function addOption(slotId) {
@@ -441,13 +491,17 @@
     if (!student) errors.push('Add a student ID');
 
     wordSlots.forEach((slot, i) => {
-      const n      = i + 1;
-      const answer = slot.options.find(o => o.isAnswer)?.value?.trim() ?? '';
-      const opts   = slot.options.map(o => o.value.trim()).filter(Boolean);
-      if (!answer)         errors.push(`Word ${n}: the correct option must not be empty`);
-      if (opts.length < 2) errors.push(`Word ${n}: add at least 2 options`);
-      if (slot.options.some(o => !o.value.trim())) errors.push(`Word ${n}: fill in all option values`);
-      if (slot.options.some(o => o.value.includes(','))) errors.push(`Word ${n}: option values cannot contain commas`);
+      const n = i + 1;
+      if (slot.type === 'text') {
+        if (!slot.textAnswer.trim()) errors.push(`Word ${n}: the correct answer must not be empty`);
+      } else {
+        const answer = slot.options.find(o => o.isAnswer)?.value?.trim() ?? '';
+        const opts   = slot.options.map(o => o.value.trim()).filter(Boolean);
+        if (!answer)         errors.push(`Word ${n}: the correct option must not be empty`);
+        if (opts.length < 2) errors.push(`Word ${n}: add at least 2 options`);
+        if (slot.options.some(o => !o.value.trim())) errors.push(`Word ${n}: fill in all option values`);
+        if (slot.options.some(o => o.value.includes(','))) errors.push(`Word ${n}: option values cannot contain commas`);
+      }
     });
 
     if (errors.length) {
@@ -459,14 +513,19 @@
 
     const params = new URLSearchParams();
     wordSlots.forEach((slot, i) => {
-      const n      = i + 1;
-      const answer = slot.options.find(o => o.isAnswer).value.trim();
-      const opts   = slot.options.map(o => o.value.trim()).filter(Boolean).join(',');
-      if (slot.prefix)  params.set(`prefix${n}`,  slot.prefix);
-      if (slot.suffix)  params.set(`suffix${n}`,  slot.suffix);
-      params.set(`answer${n}`,  answer);
-      params.set(`options${n}`, opts);
+      const n = i + 1;
+      if (slot.prefix)  params.set(`prefix${n}`, slot.prefix);
+      if (slot.suffix)  params.set(`suffix${n}`, slot.suffix);
       if (slot.context) params.set(`context${n}`, slot.context);
+      if (slot.type === 'text') {
+        params.set(`answer${n}`, slot.textAnswer.trim());
+        params.set(`type${n}`,   'text');
+      } else {
+        const answer = slot.options.find(o => o.isAnswer).value.trim();
+        const opts   = slot.options.map(o => o.value.trim()).filter(Boolean).join(',');
+        params.set(`answer${n}`,  answer);
+        params.set(`options${n}`, opts);
+      }
     });
     params.set('student', student);
     const exerciseId = exName || new Date().toISOString().slice(0, 19).replace('T', '_').replace(/:/g, '-');
