@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Exercise link generator</title>
+	<style>
+		*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+		body {
+			font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+			background: #f5f4f0;
+			color: #1a1a1a;
+			min-height: 100vh;
+			padding: 2.5rem 1rem;
+		}
+
+		.container {
+			max-width: 560px;
+			margin: 0 auto;
+		}
+
+		.page-title {
+			font-size: 22px;
+			font-weight: 500;
+			margin-bottom: 0.25rem;
+			letter-spacing: -0.3px;
+		}
+		.page-sub {
+			font-size: 13px;
+			color: #888;
+			margin-bottom: 2.5rem;
+		}
+
+		.card {
+			background: #fff;
+			border: 1px solid #e8e6e1;
+			border-radius: 14px;
+			padding: 1.5rem;
+			margin-bottom: 1rem;
+		}
+
+		.section-label {
+			font-size: 11px;
+			font-weight: 500;
+			letter-spacing: 0.6px;
+			text-transform: uppercase;
+			color: #aaa;
+			margin-bottom: 1rem;
+		}
+
+		/* word builder */
+		.word-builder {
+			display: flex;
+			align-items: center;
+			gap: 6px;
+			margin-bottom: 1.25rem;
+		}
+		.word-builder input[type=text] {
+			font-family: Georgia, serif;
+			font-size: 28px;
+			letter-spacing: 3px;
+			width: 120px;
+			border: none;
+			border-bottom: 2px solid #ddd;
+			border-radius: 0;
+			background: transparent;
+			color: #1a1a1a;
+			padding: 4px 6px;
+			outline: none;
+			text-align: center;
+			transition: border-color 0.15s;
+		}
+		.word-builder input[type=text]:focus { border-color: #888; }
+		.word-builder input[type=text]::placeholder { color: #ccc; font-size: 16px; letter-spacing: 1px; }
+		.blank-box {
+			font-family: Georgia, serif;
+			font-size: 28px;
+			width: 52px;
+			height: 44px;
+			border-bottom: 2.5px solid #bbb;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			color: #ccc;
+			flex-shrink: 0;
+			letter-spacing: 0;
+		}
+		.blank-box.has-answer {
+			color: #1a1a1a;
+			border-color: #555;
+		}
+		.word-sep {
+			font-size: 20px;
+			color: #ccc;
+			flex-shrink: 0;
+			user-select: none;
+		}
+
+		/* preview */
+		.preview {
+			font-family: Georgia, serif;
+			font-size: 13px;
+			color: #aaa;
+			margin-bottom: 0;
+		}
+		.preview span { color: #555; font-size: 14px; }
+
+		/* options */
+		.options-list {
+			display: flex;
+			flex-direction: column;
+			gap: 8px;
+			margin-bottom: 1rem;
+		}
+		.option-row {
+			display: flex;
+			align-items: center;
+			gap: 10px;
+		}
+		.option-row input[type=text] {
+			font-family: Georgia, serif;
+			font-size: 18px;
+			letter-spacing: 2px;
+			flex: 1;
+			border: 1px solid #e0deda;
+			border-radius: 8px;
+			padding: 8px 12px;
+			background: #faf9f7;
+			color: #1a1a1a;
+			outline: none;
+			transition: border-color 0.15s, background 0.15s;
+		}
+		.option-row input[type=text]:focus {
+			border-color: #aaa;
+			background: #fff;
+		}
+		.option-row input[type=text].is-answer {
+			border-color: #5aad2e;
+			background: #f2faea;
+		}
+
+		/* correct radio styled as pill */
+		.correct-toggle {
+			font-size: 11px;
+			padding: 5px 10px;
+			border-radius: 20px;
+			border: 1px solid #ddd;
+			background: #fff;
+			color: #999;
+			cursor: pointer;
+			white-space: nowrap;
+			transition: all 0.15s;
+			flex-shrink: 0;
+			user-select: none;
+		}
+		.correct-toggle.selected {
+			background: #eaf5e0;
+			border-color: #5aad2e;
+			color: #2e6e10;
+			font-weight: 500;
+		}
+		.remove-btn {
+			background: none;
+			border: none;
+			color: #ccc;
+			cursor: pointer;
+			font-size: 18px;
+			line-height: 1;
+			padding: 4px;
+			flex-shrink: 0;
+			transition: color 0.15s;
+		}
+		.remove-btn:hover { color: #e05c52; }
+
+		.add-option-btn {
+			font-size: 13px;
+			color: #888;
+			background: none;
+			border: 1px dashed #ddd;
+			border-radius: 8px;
+			padding: 8px 16px;
+			cursor: pointer;
+			width: 100%;
+			transition: border-color 0.15s, color 0.15s;
+		}
+		.add-option-btn:hover { border-color: #aaa; color: #555; }
+
+		/* fields */
+		.field { margin-bottom: 1rem; }
+		.field:last-child { margin-bottom: 0; }
+		.field label {
+			display: block;
+			font-size: 12px;
+			color: #888;
+			margin-bottom: 5px;
+		}
+		.field input[type=text] {
+			width: 100%;
+			font-size: 14px;
+			border: 1px solid #e0deda;
+			border-radius: 8px;
+			padding: 9px 12px;
+			background: #faf9f7;
+			color: #1a1a1a;
+			outline: none;
+			font-family: inherit;
+			transition: border-color 0.15s, background 0.15s;
+		}
+		.field input[type=text]:focus { border-color: #aaa; background: #fff; }
+
+		/* output */
+		.output-card {
+			background: #fff;
+			border: 1.5px solid #e8e6e1;
+			border-radius: 14px;
+			padding: 1.25rem 1.5rem;
+			margin-bottom: 1rem;
+			display: none;
+		}
+		.output-card.visible { display: block; }
+
+		.output-label {
+			font-size: 11px;
+			font-weight: 500;
+			letter-spacing: 0.6px;
+			text-transform: uppercase;
+			color: #aaa;
+			margin-bottom: 0.75rem;
+		}
+
+		.url-box {
+			display: flex;
+			align-items: center;
+			gap: 10px;
+		}
+		.url-text {
+			flex: 1;
+			font-family: 'Menlo', 'Monaco', monospace;
+			font-size: 12px;
+			color: #444;
+			background: #f5f4f0;
+			border: 1px solid #e0deda;
+			border-radius: 8px;
+			padding: 9px 12px;
+			word-break: break-all;
+			line-height: 1.5;
+			min-height: 40px;
+		}
+		.copy-btn {
+			font-size: 13px;
+			font-family: inherit;
+			padding: 9px 18px;
+			border: 1px solid #e0deda;
+			border-radius: 8px;
+			background: #fff;
+			color: #555;
+			cursor: pointer;
+			white-space: nowrap;
+			transition: all 0.15s;
+			flex-shrink: 0;
+		}
+		.copy-btn:hover { background: #f5f4f0; border-color: #bbb; }
+		.copy-btn.copied { background: #eaf5e0; border-color: #5aad2e; color: #2e6e10; }
+
+		.validation-msg {
+			font-size: 12px;
+			color: #e05c52;
+			margin-top: 0.5rem;
+			min-height: 16px;
+		}
+
+		/* generate btn */
+		.generate-btn {
+			width: 100%;
+			font-size: 15px;
+			font-family: inherit;
+			padding: 13px;
+			border: none;
+			border-radius: 10px;
+			background: #1a1a1a;
+			color: #fff;
+			cursor: pointer;
+			margin-bottom: 1rem;
+			transition: background 0.15s, transform 0.1s;
+			letter-spacing: -0.2px;
+		}
+		.generate-btn:hover { background: #333; }
+		.generate-btn:active { transform: scale(0.99); }
+	</style>
+</head>
+<body>
+<div class="container">
+
+	<h1 class="page-title">Exercise link generator</h1>
+	<p class="page-sub">Fill in the details — get a ready-to-embed URL</p>
+
+	<!-- Base URL -->
+	<div class="card">
+		<div class="section-label">Base URL</div>
+		<div class="field" style="margin:0">
+			<label>Your hosted exercise.html URL</label>
+			<input type="text" id="baseUrl" placeholder="https://yourusername.github.io/repo/exercise.html" oninput="saveBase(); generate()">
+		</div>
+	</div>
+
+	<!-- Word builder -->
+	<div class="card">
+		<div class="section-label">Word</div>
+		<div class="word-builder">
+			<input type="text" id="prefix" placeholder="he" maxlength="20" oninput="generate()">
+			<div class="word-sep">+</div>
+			<div class="blank-box" id="blankBox">_</div>
+			<div class="word-sep">+</div>
+			<input type="text" id="suffix" placeholder="o" maxlength="20" oninput="generate()">
+		</div>
+		<p class="preview" id="preview">Preview: <span>—</span></p>
+	</div>
+
+	<!-- Options -->
+	<div class="card">
+		<div class="section-label">Options</div>
+		<div class="options-list" id="optionsList"></div>
+		<button class="add-option-btn" onclick="addOption()">+ Add option</button>
+	</div>
+
+	<!-- Student & exercise -->
+	<div class="card">
+		<div class="section-label">Details</div>
+		<div class="field">
+			<label>Student ID</label>
+			<input type="text" id="studentId" placeholder="e.g. alice" oninput="generate()">
+		</div>
+		<div class="field">
+			<label>Exercise name <span style="color:#ccc">(optional — auto-generated from word)</span></label>
+			<input type="text" id="exerciseName" placeholder="leave blank to auto-generate" oninput="generate()">
+		</div>
+	</div>
+
+	<!-- Output -->
+	<div class="validation-msg" id="validationMsg"></div>
+
+	<div class="output-card" id="outputCard">
+		<div class="output-label">Generated link</div>
+		<div class="url-box">
+			<div class="url-text" id="urlText"></div>
+			<button class="copy-btn" id="copyBtn" onclick="copyUrl()">Copy</button>
+		</div>
+	</div>
+
+</div>
+
+<script>
+	// restore saved base URL
+	const savedBase = localStorage.getItem('exerciseBaseUrl');
+	if (savedBase) document.getElementById('baseUrl').value = savedBase;
+
+	let options = [
+		{ id: 1, value: 'l',  isAnswer: false },
+		{ id: 2, value: 'll', isAnswer: true  }
+	];
+	let nextId = 3;
+
+	function saveBase() {
+		const v = document.getElementById('baseUrl').value.trim();
+		if (v) localStorage.setItem('exerciseBaseUrl', v);
+	}
+
+	function renderOptions() {
+		const list = document.getElementById('optionsList');
+		list.innerHTML = options.map(opt => `
+      <div class="option-row" id="row-${opt.id}">
+        <input
+          type="text"
+          class="${opt.isAnswer ? 'is-answer' : ''}"
+          value="${opt.value}"
+          placeholder="option"
+          oninput="updateOption(${opt.id}, this.value)"
+        >
+        <button
+          class="correct-toggle ${opt.isAnswer ? 'selected' : ''}"
+          onclick="setAnswer(${opt.id})"
+          title="Mark as correct answer"
+        >${opt.isAnswer ? '✓ correct' : 'mark correct'}</button>
+        <button class="remove-btn" onclick="removeOption(${opt.id})" title="Remove">×</button>
+      </div>
+    `).join('');
+		generate();
+	}
+
+	function addOption() {
+		options.push({ id: nextId++, value: '', isAnswer: false });
+		renderOptions();
+		// focus the new input
+		const inputs = document.querySelectorAll('.option-row input');
+		if (inputs.length) inputs[inputs.length - 1].focus();
+	}
+
+	function removeOption(id) {
+		if (options.length <= 2) return;
+		const wasAnswer = options.find(o => o.id === id)?.isAnswer;
+		options = options.filter(o => o.id !== id);
+		if (wasAnswer && options.length > 0) options[0].isAnswer = true;
+		renderOptions();
+	}
+
+	function updateOption(id, value) {
+		const opt = options.find(o => o.id === id);
+		if (opt) { opt.value = value; generate(); }
+	}
+
+	function setAnswer(id) {
+		options.forEach(o => o.isAnswer = o.id === id);
+		renderOptions();
+	}
+
+	function generate() {
+		const base     = document.getElementById('baseUrl').value.trim();
+		const prefix   = document.getElementById('prefix').value.trim();
+		const suffix   = document.getElementById('suffix').value.trim();
+		const student  = document.getElementById('studentId').value.trim();
+		const exName   = document.getElementById('exerciseName').value.trim();
+		const answer   = options.find(o => o.isAnswer);
+		const opts     = options.map(o => o.value.trim()).filter(Boolean);
+		const validationMsg = document.getElementById('validationMsg');
+		const outputCard    = document.getElementById('outputCard');
+		const blankBox      = document.getElementById('blankBox');
+		const preview       = document.getElementById('preview');
+
+		// update preview
+		const answerVal = answer?.value?.trim() ?? '';
+		blankBox.textContent = answerVal || '_';
+		blankBox.className = 'blank-box' + (answerVal ? ' has-answer' : '');
+		const fullWord = prefix + answerVal + suffix;
+		preview.innerHTML = `Preview: <span>${fullWord || '—'}</span>`;
+
+		// validate
+		const errors = [];
+		if (!base)            errors.push('Add the base URL of exercise.html');
+		if (!prefix && !suffix) errors.push('Add at least a prefix or suffix');
+		if (opts.length < 2)  errors.push('Add at least 2 options');
+		if (!answerVal)       errors.push('Mark one option as correct');
+		if (!student)         errors.push('Add a student ID');
+		if (opts.some(o => !o)) errors.push('Fill in all option values');
+
+		if (errors.length) {
+			validationMsg.textContent = errors[0];
+			outputCard.classList.remove('visible');
+			return;
+		}
+		validationMsg.textContent = '';
+
+		const exercise = exName || fullWord;
+		const params = new URLSearchParams({
+			prefix,
+			suffix,
+			options: opts.join(','),
+			answer:  answerVal,
+			student,
+			exercise
+		});
+
+		const url = `${base}?${params.toString()}`;
+		document.getElementById('urlText').textContent = url;
+		outputCard.classList.add('visible');
+
+		// reset copy button if URL changed
+		const copyBtn = document.getElementById('copyBtn');
+		copyBtn.textContent = 'Copy';
+		copyBtn.className = 'copy-btn';
+	}
+
+	function copyUrl() {
+		const url = document.getElementById('urlText').textContent;
+		navigator.clipboard.writeText(url).then(() => {
+			const btn = document.getElementById('copyBtn');
+			btn.textContent = 'Copied!';
+			btn.className = 'copy-btn copied';
+			setTimeout(() => {
+				btn.textContent = 'Copy';
+				btn.className = 'copy-btn';
+			}, 2000);
+		});
+	}
+
+	// init
+	renderOptions();
+</script>
+</body>
+</html>

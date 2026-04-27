@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Results dashboard</title>
+	<style>
+		* { box-sizing: border-box; margin: 0; padding: 0; }
+		body {
+			font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+			background: #f7f7f5;
+			color: #1a1a1a;
+			padding: 2rem;
+			min-height: 100vh;
+		}
+		h1 {
+			font-size: 18px;
+			font-weight: 500;
+			margin-bottom: 0.25rem;
+		}
+		.subtitle {
+			font-size: 13px;
+			color: #888;
+			margin-bottom: 2rem;
+		}
+		.exercise-block {
+			background: #fff;
+			border: 1px solid #e5e5e5;
+			border-radius: 12px;
+			padding: 1.25rem 1.5rem;
+			margin-bottom: 1.5rem;
+		}
+		.exercise-title {
+			font-size: 15px;
+			font-weight: 500;
+			margin-bottom: 1rem;
+			color: #333;
+		}
+		table {
+			width: 100%;
+			border-collapse: collapse;
+			font-size: 13px;
+		}
+		th {
+			text-align: left;
+			font-weight: 500;
+			color: #888;
+			padding: 0 0 8px;
+			border-bottom: 1px solid #eee;
+		}
+		td {
+			padding: 8px 0;
+			border-bottom: 1px solid #f0f0f0;
+			color: #333;
+		}
+		tr:last-child td { border-bottom: none; }
+		.badge {
+			display: inline-block;
+			font-size: 11px;
+			padding: 2px 8px;
+			border-radius: 6px;
+			font-weight: 500;
+		}
+		.badge.correct { background: #eaf5e0; color: #2e6e10; }
+		.badge.wrong   { background: #fdecea; color: #b02a22; }
+		.refresh-btn {
+			font-size: 13px;
+			padding: 7px 18px;
+			border: 1px solid #ddd;
+			border-radius: 8px;
+			background: #fff;
+			color: #555;
+			cursor: pointer;
+			margin-bottom: 2rem;
+		}
+		.refresh-btn:hover { background: #f5f5f5; }
+		.empty {
+			font-size: 13px;
+			color: #aaa;
+			padding: 0.5rem 0;
+		}
+		.status {
+			font-size: 12px;
+			color: #aaa;
+			margin-bottom: 1.5rem;
+		}
+		.error { color: #b02a22; font-size: 14px; margin-top: 1rem; }
+	</style>
+</head>
+<body>
+
+<h1>Student results</h1>
+<p class="subtitle">Auto-refreshes every 30 seconds</p>
+
+<button class="refresh-btn" onclick="load()">Refresh now</button>
+<div class="status" id="status"></div>
+<div id="content"></div>
+
+<script>
+	// ─── CONFIG — same values as in exercise.html ───────────────
+	const BIN_ID  = '69eface236566621a8fa7fea';
+	const API_KEY = '$2a$10$NUAE0y6TZ43RjG4NBZ6oBOZKsYImTVPEvs3UMQfUClATGabPJCH4C'; // I don't care, it's free
+	// ───────────────────────────────────────────────────────────
+
+	async function load() {
+		const status  = document.getElementById('status');
+		const content = document.getElementById('content');
+		status.textContent = 'Loading…';
+		try {
+			const res  = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`, {
+				headers: { 'X-Master-Key': API_KEY }
+			});
+			const data = await res.json();
+			const record = data.record ?? {};
+			const exercises = Object.keys(record);
+
+			if (exercises.length === 0) {
+				content.innerHTML = '<p class="empty">No results yet.</p>';
+				status.textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
+				return;
+			}
+
+			content.innerHTML = exercises.map(ex => {
+				const students = record[ex];
+				const rows = Object.entries(students).map(([name, r]) => `
+          <tr>
+            <td>${name}</td>
+            <td>${r.chosenAnswer ?? '—'}</td>
+            <td><span class="badge ${r.correct ? 'correct' : 'wrong'}">${r.correct ? 'correct' : 'wrong'}</span></td>
+            <td>${r.attempts ?? '—'}</td>
+            <td style="color:#aaa">${r.lastAttempt ? new Date(r.lastAttempt).toLocaleTimeString() : '—'}</td>
+          </tr>
+        `).join('');
+
+				return `
+          <div class="exercise-block">
+            <div class="exercise-title">${ex}</div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Student</th>
+                  <th>Answer</th>
+                  <th>Result</th>
+                  <th>Attempts</th>
+                  <th>Time</th>
+                </tr>
+              </thead>
+              <tbody>${rows}</tbody>
+            </table>
+          </div>
+        `;
+			}).join('');
+
+			status.textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
+		} catch (e) {
+			status.textContent = '';
+			content.innerHTML += '<p class="error">Failed to load results. Check your BIN_ID and API_KEY.</p>';
+		}
+	}
+
+	load();
+	setInterval(load, 30000);
+</script>
+</body>
+</html>
