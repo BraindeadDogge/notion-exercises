@@ -160,7 +160,7 @@
     let topHtml;
     if (slot.context && slot.context.includes('{word}')) {
       const inlineWord = `<span class="inline-word">${esc(slot.prefix)}${buildBlank(idx)}${esc(slot.suffix)}</span>`;
-      topHtml = `<div class="context-block">${slot.context.replace('{word}', inlineWord)}</div>`;
+      topHtml = `<div class="context-block">${esc(slot.context).replace('{word}', inlineWord)}</div>`;
     } else {
       topHtml = `<div class="word-block"><span>${esc(slot.prefix)}</span>${buildBlank(idx)}<span>${esc(slot.suffix)}</span></div>`;
     }
