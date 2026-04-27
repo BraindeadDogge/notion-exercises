@@ -79,6 +79,41 @@
     .opt:disabled { cursor: default; }
     .opt.correct { background: #eaf5e0; border-color: #5aad2e; color: #2e6e10; }
     .opt.wrong   { background: #fdecea; border-color: #e05c52; color: #b02a22; }
+    .text-input-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 1.25rem;
+      align-items: center;
+    }
+    .text-input {
+      font-family: Georgia, serif;
+      font-size: 28px;
+      letter-spacing: 3px;
+      border: none;
+      border-bottom: 2px solid #ccc;
+      background: transparent;
+      color: #1a1a1a;
+      padding: 4px 8px;
+      outline: none;
+      width: 180px;
+      text-align: center;
+      transition: border-color 0.15s;
+    }
+    .text-input:focus { border-color: #888; }
+    .text-input:disabled { color: #aaa; }
+    .check-btn {
+      font-family: -apple-system, sans-serif;
+      font-size: 14px;
+      padding: 8px 20px;
+      border: 1.5px solid #ccc;
+      border-radius: 8px;
+      background: #fff;
+      color: #555;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .check-btn:hover:not(:disabled) { background: #f5f5f5; border-color: #aaa; }
+    .check-btn:disabled { cursor: default; color: #bbb; border-color: #eee; }
     .feedback {
       font-family: -apple-system, sans-serif;
       font-size: 14px;
@@ -137,14 +172,17 @@
     const answer  = p.get(`answer${i}`);
     const options = (p.get(`options${i}`) ?? '').split(',').map(s => s.trim()).filter(Boolean);
     const context = p.get(`context${i}`) ?? '';
+    const type    = p.get(`type${i}`) === 'text' ? 'text' : 'options';
     const fullWord = prefix + answer + suffix;
     const exercise = exerciseBase ? `${exerciseBase}_${i}` : `${fullWord}_${i}`;
-    slots.push({ prefix, suffix, answer, options, context, exercise, attempts: 0 });
+    slots.push({ prefix, suffix, answer, options, context, type, exercise, attempts: 0 });
     i++;
   }
 
-  if (!student || slots.length === 0 || slots.some(s => s.options.length < 2 || !s.answer)) {
-    document.body.innerHTML = '<p class="error-msg">Missing parameters.<br>Required: answer1, options1 (min 2), student</p>';
+  if (!student || slots.length === 0 || slots.some(s =>
+    !s.answer || (s.type === 'options' && s.options.length < 2)
+  )) {
+    document.body.innerHTML = '<p class="error-msg">Missing parameters.<br>Required: answer1, student; options1 (min 2) for options slots</p>';
   } else {
     document.body.innerHTML = slots.map((slot, idx) => buildSlot(slot, idx)).join('');
   }
@@ -165,15 +203,24 @@
       topHtml = `<div class="word-block"><span>${esc(slot.prefix)}</span>${buildBlank(idx)}<span>${esc(slot.suffix)}</span></div>`;
     }
 
-    const optBtns = slot.options.map(o =>
-      `<button class="opt" data-choice="${escAttr(o)}" onclick="check(${idx},this,this.dataset.choice)">${esc(o)}</button>`
-    ).join('');
+    let interactionHtml;
+    if (slot.type === 'text') {
+      interactionHtml = `<div class="text-input-row">
+        <input class="text-input" id="text-input-${idx}" type="text" placeholder="type your answer…"
+          onkeydown="if(event.key==='Enter')checkText(${idx})">
+        <button class="check-btn" id="check-btn-${idx}" onclick="checkText(${idx})">Check</button>
+      </div>`;
+    } else {
+      interactionHtml = `<div class="options">${slot.options.map(o =>
+        `<button class="opt" data-choice="${escAttr(o)}" onclick="check(${idx},this,this.dataset.choice)">${esc(o)}</button>`
+      ).join('')}</div>`;
+    }
 
     const retryBtn = noRetry ? '' : `<button class="retry" id="retry-${idx}" onclick="reset(${idx})">Try again</button>`;
 
     return `<div class="slot" id="slot-${idx}">
       ${topHtml}
-      <div class="options">${optBtns}</div>
+      ${interactionHtml}
       <div class="feedback" id="fb-${idx}"></div>
       ${retryBtn}
       <div class="saving" id="saving-${idx}"></div>
@@ -233,8 +280,42 @@
     saveResult(idx, choice, isCorrect);
   }
 
+  function checkText(idx) {
+    const slot     = slots[idx];
+    const input    = document.getElementById(`text-input-${idx}`);
+    const checkBtn = document.getElementById(`check-btn-${idx}`);
+    const choice   = input.value;
+    if (!choice.trim()) return;
+    slot.attempts++;
+    input.disabled    = true;
+    checkBtn.disabled = true;
+    const blank     = document.getElementById(`blank-${idx}`);
+    const fb        = document.getElementById(`fb-${idx}`);
+    const isCorrect = choice.trim().toLowerCase() === slot.answer.toLowerCase();
+    blank.textContent = choice.trim();
+    if (isCorrect) {
+      blank.classList.add('correct');
+      fb.textContent = `Correct! The word is "${slot.prefix}${slot.answer}${slot.suffix}"`;
+      fb.className = 'feedback correct';
+    } else {
+      blank.classList.add('wrong');
+      fb.textContent = 'Not quite — try again!';
+      fb.className = 'feedback wrong';
+    }
+    if (!noRetry) document.getElementById(`retry-${idx}`)?.classList.add('show');
+    saveResult(idx, choice, isCorrect);
+  }
+
   function reset(idx) {
-    document.querySelectorAll(`#slot-${idx} .opt`).forEach(b => { b.disabled = false; b.className = 'opt'; });
+    const slot = slots[idx];
+    if (slot.type === 'text') {
+      const input = document.getElementById(`text-input-${idx}`);
+      input.value    = '';
+      input.disabled = false;
+      document.getElementById(`check-btn-${idx}`).disabled = false;
+    } else {
+      document.querySelectorAll(`#slot-${idx} .opt`).forEach(b => { b.disabled = false; b.className = 'opt'; });
+    }
     const blank = document.getElementById(`blank-${idx}`);
     blank.textContent = '_';
     blank.className = 'blank';
