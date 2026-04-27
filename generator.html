@@ -469,7 +469,8 @@
       if (slot.context) params.set(`context${n}`, slot.context);
     });
     params.set('student', student);
-    if (exName)  params.set('exercise', exName);
+    const exerciseId = exName || new Date().toISOString().slice(0, 19).replace('T', '_').replace(/:/g, '-');
+    params.set('exercise', exerciseId);
     if (noRetry) params.set('noRetry', '1');
 
     const url = `${base}?${params.toString()}`;
