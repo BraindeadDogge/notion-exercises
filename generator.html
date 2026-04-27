@@ -427,7 +427,7 @@
 
   function setSlotType(slotId, type) {
     const slot = wordSlots.find(s => s.id === slotId);
-    if (slot) { slot.type = type; renderAllSlots(); }
+    if (slot && slot.type !== type) { slot.type = type; renderAllSlots(); }
   }
 
   function updateTextAnswer(slotId, value) {
