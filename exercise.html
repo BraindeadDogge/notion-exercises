@@ -150,6 +150,7 @@
   }
 
   function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function escAttr(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
   function buildBlank(idx) {
     return `<span class="blank" id="blank-${idx}">_</span>`;
@@ -165,7 +166,7 @@
     }
 
     const optBtns = slot.options.map(o =>
-      `<button class="opt" onclick="check(${idx},this,${JSON.stringify(o)})">${esc(o)}</button>`
+      `<button class="opt" data-choice="${escAttr(o)}" onclick="check(${idx},this,this.dataset.choice)">${esc(o)}</button>`
     ).join('');
 
     const retryBtn = noRetry ? '' : `<button class="retry" id="retry-${idx}" onclick="reset(${idx})">Try again</button>`;
@@ -181,7 +182,7 @@
 
   let saveQueue = Promise.resolve();
 
-  async function saveResult(idx, chosen, isCorrect) {
+  function saveResult(idx, chosen, isCorrect) {
     saveQueue = saveQueue.then(() => _doSave(idx, chosen, isCorrect));
   }
 
