@@ -411,7 +411,14 @@
   function updateOption(slotId, optId, value) {
     const slot = wordSlots.find(s => s.id === slotId);
     const opt  = slot?.options.find(o => o.id === optId);
-    if (opt) { opt.value = value; generate(); }
+    if (!opt) return;
+    opt.value = value;
+    if (opt.isAnswer) {
+      const answerVal = value.trim();
+      const bb = document.getElementById(`blank-box-${slotId}`);
+      if (bb) { bb.textContent = answerVal || '_'; bb.className = 'blank-box' + (answerVal ? ' has-answer' : ''); }
+    }
+    generate();
   }
 
   function setAnswer(slotId, optId) {
@@ -437,9 +444,10 @@
       const n      = i + 1;
       const answer = slot.options.find(o => o.isAnswer)?.value?.trim() ?? '';
       const opts   = slot.options.map(o => o.value.trim()).filter(Boolean);
-      if (!answer)         errors.push(`Word ${n}: mark one option as correct`);
+      if (!answer)         errors.push(`Word ${n}: the correct option must not be empty`);
       if (opts.length < 2) errors.push(`Word ${n}: add at least 2 options`);
       if (slot.options.some(o => !o.value.trim())) errors.push(`Word ${n}: fill in all option values`);
+      if (slot.options.some(o => o.value.includes(','))) errors.push(`Word ${n}: option values cannot contain commas`);
     });
 
     if (errors.length) {
@@ -453,7 +461,7 @@
     wordSlots.forEach((slot, i) => {
       const n      = i + 1;
       const answer = slot.options.find(o => o.isAnswer).value.trim();
-      const opts   = slot.options.map(o => o.value.trim()).join(',');
+      const opts   = slot.options.map(o => o.value.trim()).filter(Boolean).join(',');
       if (slot.prefix)  params.set(`prefix${n}`,  slot.prefix);
       if (slot.suffix)  params.set(`suffix${n}`,  slot.suffix);
       params.set(`answer${n}`,  answer);
