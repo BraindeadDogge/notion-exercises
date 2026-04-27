@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: Georgia, serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    background: #fff;
+    padding: 1rem;
+  }
+
+  .word {
+    display: flex;
+    align-items: flex-end;
+    gap: 2px;
+    font-size: 48px;
+    letter-spacing: 4px;
+    margin-bottom: 2rem;
+    color: #1a1a1a;
+  }
+
+  .blank {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 56px;
+    padding: 0 4px;
+    border-bottom: 2.5px solid #888;
+    color: #1a1a1a;
+    transition: color 0.2s, border-color 0.2s;
+    font-size: 48px;
+    letter-spacing: 2px;
+    line-height: 1.15;
+  }
+  .blank.correct { border-color: #3a7d1e; color: #3a7d1e; }
+  .blank.wrong   { border-color: #c0392b; color: #c0392b; }
+
+  .options {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-bottom: 1.25rem;
+  }
+
+  .opt {
+    font-family: Georgia, serif;
+    font-size: 22px;
+    letter-spacing: 2px;
+    padding: 10px 32px;
+    border: 1.5px solid #ccc;
+    border-radius: 10px;
+    background: #fff;
+    color: #1a1a1a;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, transform 0.1s;
+  }
+  .opt:hover:not(:disabled) { background: #f5f5f5; border-color: #aaa; }
+  .opt:active:not(:disabled) { transform: scale(0.97); }
+  .opt:disabled { cursor: default; }
+  .opt.correct { background: #eaf5e0; border-color: #5aad2e; color: #2e6e10; }
+  .opt.wrong   { background: #fdecea; border-color: #e05c52; color: #b02a22; }
+
+  .feedback {
+    font-family: -apple-system, sans-serif;
+    font-size: 14px;
+    min-height: 20px;
+    color: #888;
+    margin-bottom: 1rem;
+    text-align: center;
+  }
+  .feedback.correct { color: #2e6e10; }
+  .feedback.wrong   { color: #b02a22; }
+
+  .retry {
+    display: none;
+    font-family: -apple-system, sans-serif;
+    font-size: 13px;
+    padding: 7px 20px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background: #fff;
+    color: #555;
+    cursor: pointer;
+  }
+  .retry:hover { background: #f5f5f5; }
+  .retry.show { display: block; }
+
+  .error {
+    font-family: -apple-system, sans-serif;
+    font-size: 14px;
+    color: #b02a22;
+    text-align: center;
+    padding: 1rem;
+  }
+</style>
+</head>
+<body>
+
+<div id="root"></div>
+
+<script>
+  const p = new URLSearchParams(location.search);
+  const prefix  = p.get('prefix')  ?? '';
+  const suffix  = p.get('suffix')  ?? '';
+  const answer  = p.get('answer')  ?? '';
+  const options = (p.get('options') ?? '').split(',').map(s => s.trim()).filter(Boolean);
+
+  const root = document.getElementById('root');
+
+  if (!answer || options.length < 2) {
+    root.innerHTML = '<p class="error">Missing parameters.<br>Use: ?prefix=he&suffix=o&options=l,ll&answer=ll</p>';
+  } else {
+    root.innerHTML = `
+      <div class="word">
+        <span>${prefix}</span>
+        <span class="blank" id="blank">_</span>
+        <span>${suffix}</span>
+      </div>
+      <div class="options" id="opts">
+        ${options.map(o => `<button class="opt" onclick="check(this,'${o}')">${o}</button>`).join('')}
+      </div>
+      <div class="feedback" id="fb"></div>
+      <button class="retry" id="retry" onclick="reset()">Try again</button>
+    `;
+  }
+
+  function check(btn, choice) {
+    document.querySelectorAll('.opt').forEach(b => b.disabled = true);
+    const blank = document.getElementById('blank');
+    const fb    = document.getElementById('fb');
+    const retry = document.getElementById('retry');
+    blank.textContent = choice;
+    if (choice === answer) {
+      btn.classList.add('correct');
+      blank.classList.add('correct');
+      fb.textContent = `Correct! The word is "${prefix}${answer}${suffix}"`;
+      fb.className = 'feedback correct';
+    } else {
+      btn.classList.add('wrong');
+      blank.classList.add('wrong');
+      fb.textContent = 'Not quite — try again!';
+      fb.className = 'feedback wrong';
+    }
+    retry.classList.add('show');
+  }
+
+  function reset() {
+    document.querySelectorAll('.opt').forEach(b => {
+      b.disabled = false;
+      b.className = 'opt';
+    });
+    const blank = document.getElementById('blank');
+    blank.textContent = '_';
+    blank.className = 'blank';
+    document.getElementById('fb').textContent = '';
+    document.getElementById('fb').className = 'feedback';
+    document.getElementById('retry').classList.remove('show');
+  }
+</script>
+</body>
+</html>
