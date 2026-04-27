@@ -158,7 +158,7 @@
 
   function buildSlot(slot, idx) {
     let topHtml;
-    if (slot.context) {
+    if (slot.context && slot.context.includes('{word}')) {
       const inlineWord = `<span class="inline-word">${esc(slot.prefix)}${buildBlank(idx)}${esc(slot.suffix)}</span>`;
       topHtml = `<div class="context-block">${slot.context.replace('{word}', inlineWord)}</div>`;
     } else {
@@ -166,7 +166,7 @@
     }
 
     const optBtns = slot.options.map(o =>
-      `<button class="opt" onclick="check(${idx},this,'${escQ(o)}')">${esc(o)}</button>`
+      `<button class="opt" onclick="check(${idx},this,${JSON.stringify(o)})">${esc(o)}</button>`
     ).join('');
 
     const retryBtn = noRetry ? '' : `<button class="retry" id="retry-${idx}" onclick="reset(${idx})">Try again</button>`;
@@ -180,7 +180,13 @@
     </div>`;
   }
 
+  let saveQueue = Promise.resolve();
+
   async function saveResult(idx, chosen, isCorrect) {
+    saveQueue = saveQueue.then(() => _doSave(idx, chosen, isCorrect));
+  }
+
+  async function _doSave(idx, chosen, isCorrect) {
     const slot   = slots[idx];
     const saving = document.getElementById(`saving-${idx}`);
     saving.textContent = 'saving…';
