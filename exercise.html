@@ -150,7 +150,6 @@
   }
 
   function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-  function escQ(s) { return String(s).replace(/'/g,"\\'"); }
 
   function buildBlank(idx) {
     return `<span class="blank" id="blank-${idx}">_</span>`;
